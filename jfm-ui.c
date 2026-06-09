@@ -188,7 +188,8 @@ void perform_search(const char *query) {
     json_free(json);
     
     for (int i = 0; i < count; i++) {
-        snncpy(ui_state.menu_items[i].title, results[i].name, 255);
+        //snncpy(ui_state.menu_items[i].title, results[i].name, 255);
+        strncpy(ui_state.menu_items[i].title, results[i].name, 255);
         strncpy(ui_state.menu_items[i].data, results[i].jellyfin_id, 511);
         ui_state.menu_items[i].type = 0;
         ui_state.menu_count++;
@@ -205,7 +206,8 @@ void play_video(const char *filepath) {
     db_get_watch_state(ui_state.db, filepath, ui_state.username, &position, &is_finished);
     
     // Build mpv command with resume position
-    snprintf(cmd, sizeof(cmd), "mpv --autofit=3072x1728 --autosync=5 --mc=0 --vo=gpu", filepath);
+    //snprintf(cmd, sizeof(cmd), "mpv --autofit=3072x1728 --autosync=5 --mc=0 --vo=gpu", filepath);
+    snprintf(cmd, sizeof(cmd), "mpv --autofit=3072x1728 --autosync=5 --mc=0 --vo=gpu %s", filepath);
     if (position > 0) {
         snprintf(cmd + strlen(cmd), sizeof(cmd) - strlen(cmd), " --start=%lf", position);
     }

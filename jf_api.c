@@ -163,7 +163,9 @@ int jf_parse_episodes(const char *json, Episode *episodes, int *count) {
             strncpy(episodes[*count].jellyfin_id, id->valuestring, 255);
             episodes[*count].season = season ? season->valueint : 0;
             episodes[*count].episode = episode ? episode->valueint : 0;
-            episodes[*count].runtime_ticks = runtime ? runtime->valueint64 : 0;
+            // episodes[*count].runtime_ticks = runtime ? runtime->valueint64 : 0;
+            episodes[*count].runtime_ticks = runtime ? runtime->valueint : 0;
+
             (*count)++;
         }
     }

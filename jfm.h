@@ -69,7 +69,9 @@ int db_add_exclude_path(sqlite3 *db, const char *path);
 char *jf_search(const char *server_url, const char *api_key, const char *query);
 char *jf_get_series_episodes(const char *server_url, const char *api_key, const char *series_id);
 char *jf_get_item(const char *server_url, const char *api_key, const char *item_id);
-void jf_parse_search_results(const char *json, Episode *episodes, int *count);
+// void jf_parse_search_results(const char *json, Episode *episodes, int *count);
+int jf_parse_search_results(const char *json, Episode *episodes, int *count);
+
 void json_free(char *json);
 
 #endif
