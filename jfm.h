@@ -76,5 +76,14 @@ void json_free(char *json);
 // Add after the existing function declarations:
 int jf_parse_episodes(const char *json, Episode *episodes, int *count);
 int db_update_series_poll_time(sqlite3 *db, const char *series_id);
+// Database query functions (add these)
+int db_get_series_by_id(sqlite3 *db, const char *jellyfin_id, Series *series);
+int db_get_episodes_for_series(sqlite3 *db, const char *series_id, Episode *episodes, int max_count);
+int db_get_local_files(sqlite3 *db, const char *series_name, LocalFile *files, int max_count);
+
+// Logging functions (add these)
+void jf_api_init_logging(const char *filename);
+void jf_api_cleanup_logging(void);
+
 
 #endif

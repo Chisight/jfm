@@ -20,10 +20,11 @@ typedef enum {
 } ScreenType;
 
 typedef struct {
-    char title[256];
-    char data[512];  // Could be series ID, file path, etc.
-    int type;        // 0=series, 1=episode, 2=file
+    char title[512];      // Increased from 256
+    char data[1024];      // Increased from 512
+    int type;
 } MenuItem;
+
 
 typedef struct {
     sqlite3 *db;
@@ -224,23 +225,24 @@ void play_video(const char *filepath) {
 void screen_main(void) {
     clear();
     draw_header();
-    
     if (ui_state.menu_count == 0) {
-        ui_state.menu_count = 4;
-        strcpy(ui_state.menu_items[0].title, "Browse Series");
-        strcpy(ui_state.menu_items[0].data, "browse");
-        strcpy(ui_state.menu_items[1].title, "Search All Servers");
-        strcpy(ui_state.menu_items[1].data, "search");
-        strcpy(ui_state.menu_items[2].title, "Local Files");
-        strcpy(ui_state.menu_items[2].data, "local");
-        strcpy(ui_state.menu_items[3].title, "Watch History");
-        strcpy(ui_state.menu_items[3].data, "history");
+        ui_state.menu_count = 5;
+        strcpy(ui_state.menu_items[0].title, "Switch Server");
+        strcpy(ui_state.menu_items[0].data, "server");
+        strcpy(ui_state.menu_items[1].title, "Browse Series");
+        strcpy(ui_state.menu_items[1].data, "browse");
+        strcpy(ui_state.menu_items[2].title, "Search All Servers");
+        strcpy(ui_state.menu_items[2].data, "search");
+        strcpy(ui_state.menu_items[3].title, "Local Files");
+        strcpy(ui_state.menu_items[3].data, "local");
+        strcpy(ui_state.menu_items[4].title, "Watch History");
+        strcpy(ui_state.menu_items[4].data, "history");
     }
-    
     draw_menu();
     draw_footer();
     refresh();
 }
+
 
 void screen_search(void) {
     clear();
@@ -272,8 +274,8 @@ int main(void) {
     init_ui(db);
     
     int ch;
-    ScreenType prev_screen = SCREEN_MAIN;
-    
+    //ScreenType prev_screen = SCREEN_MAIN;
+
     jf_api_init_logging("jfm.log");
 
     while (1) {
@@ -304,19 +306,26 @@ int main(void) {
             case '\n':
             case KEY_ENTER:
                 if (ui_state.current_screen == SCREEN_MAIN) {
-                    if (strcmp(ui_state.menu_items[ui_state.selected_item].data, "browse") == 0) {
+                    const char *selected_action = ui_state.menu_items[ui_state.selected_item].data;
+                    
+                    if (strcmp(selected_action, "server") == 0) {
+                        // Cycle to next server
+                        ui_state.current_server = (ui_state.current_server + 1) % ui_state.server_count;
+                        ui_state.menu_count = 0;  // Reset menu to show new server
+                    } else if (strcmp(selected_action, "browse") == 0) {
                         load_series_for_display();
                         ui_state.current_screen = SCREEN_BROWSE_SERIES;
-                    } else if (strcmp(ui_state.menu_items[ui_state.selected_item].data, "search") == 0) {
+                    } else if (strcmp(selected_action, "search") == 0) {
                         screen_search();
                     }
                 } else if (ui_state.current_screen == SCREEN_BROWSE_SERIES ||
-                          ui_state.current_screen == SCREEN_SEARCH) {
+                           ui_state.current_screen == SCREEN_SEARCH) {
                     load_episodes_for_series(ui_state.menu_items[ui_state.selected_item].data);
                 } else if (ui_state.current_screen == SCREEN_EPISODES) {
                     load_local_files(ui_state.menu_items[ui_state.selected_item].data);
                 }
                 break;
+
             
             case 'w':
                 if (ui_state.current_screen == SCREEN_LOCAL_FILES) {

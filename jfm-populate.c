@@ -17,7 +17,6 @@
 int extract_episode_info(const char *filename, char *series_name, int *season, int *episode) {
     // Pattern: SeriesName - S01E05 - Episode Title.mkv
     // Or: SeriesName_S01E05.mkv
-    
     char *copy = strdup(filename);
     char *base = basename(copy);
     char *dot = strrchr(base, '.');
@@ -28,18 +27,21 @@ int extract_episode_info(const char *filename, char *series_name, int *season, i
     
     // Try "S##E##" pattern
     if (sscanf(base, "%511[^S]S%dE%d", name, &s, &e) >= 3) {
-        //strncpy(series_name, name, 511);
-        strncpy(series_name, name, sizeof(series_name) - 1);
-series_name[sizeof(series_name) - 1] = '\0';
+        // FIX: Use the correct buffer size (511), not sizeof()
+        strncpy(series_name, name, 511);
+        series_name[511] = '\0';
+        
         // Clean up trailing punctuation
         int len = strlen(series_name);
-        while (len > 0 && (series_name[len-1] == ' ' || series_name[len-1] == '-')) {
+        while (len > 0 && (series_name[len-1] == ' ' || series_name[len-1] == '-' || series_name[len-1] == '_')) {
             series_name[--len] = 0;
         }
+        
         // Replace underscores with spaces
         for (char *p = series_name; *p; p++) {
             if (*p == '_') *p = ' ';
         }
+        
         *season = s;
         *episode = e;
         free(copy);
@@ -51,18 +53,46 @@ series_name[sizeof(series_name) - 1] = '\0';
 }
 
 int get_video_duration(const char *filepath, int *duration_seconds) {
-    // Use ffprobe to get duration
-    char cmd[2048];
-    snprintf(cmd, sizeof(cmd), 
-             "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:noprint_filename=1 '%s' 2>/dev/null",
-             filepath);
+    // Use ffprobe to get duration - properly escape the filepath
+    char *escaped_path = malloc(strlen(filepath) * 2 + 1);
+    if (!escaped_path) return -1;
+    
+    char *src = (char *)filepath;
+    char *dst = escaped_path;
+    
+    // Escape single quotes and backslashes for shell
+    while (*src) {
+        if (*src == '\'') {
+            *dst++ = '\'';
+            *dst++ = '\\';
+            *dst++ = '\'';
+            *dst++ = '\'';
+            src++;
+        } else if (*src == '\\') {
+            *dst++ = '\\';
+            *dst++ = '\\';
+            src++;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+    
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd),
+        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:noprint_filename=1 '%s' 2>/dev/null",
+        escaped_path);
     
     FILE *fp = popen(cmd, "r");
+    free(escaped_path);
+    
     if (!fp) return -1;
     
     double duration = 0;
-    fscanf(fp, "%lf", &duration);
+    int result = fscanf(fp, "%lf", &duration);
     pclose(fp);
+    
+    if (result != 1) return -1;
     
     *duration_seconds = (int)duration;
     return 0;
@@ -142,6 +172,8 @@ void scan_directory(sqlite3 *db, const char *path, int depth) {
 }
 
 int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
     sqlite3 *db = db_open(DB_PATH);
     if (!db) {
         fprintf(stderr, "Failed to open database\n");
