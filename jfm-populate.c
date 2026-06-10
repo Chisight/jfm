@@ -159,10 +159,17 @@ void scan_directory(sqlite3 *db, const char *path, int depth) {
                 if (extract_episode_info(entry->d_name, series_name, &season, &episode)) {
                     int duration = 0;
                     if (get_video_duration(filepath, &duration) == 0) {
-                        printf("Found: %s - S%02dE%02d (%s)\n", 
-                               series_name, season, episode, filepath);
-                        db_add_local_file(db, filepath, series_name, season, episode, duration);
+                        printf("Found: %s - S%02dE%02d (%s)\n",
+                            series_name, season, episode, filepath);
+                        if (db_add_local_file(db, filepath, series_name, season, episode, duration) < 0) {
+                            printf("ERROR: Failed to insert file into database\n");
+                        }
+                    } else {
+                        printf("ERROR: Could not get duration for %s\n", filepath);
                     }
+                } else {
+                    // DEBUG: Show why pattern didn't match
+                    printf("DEBUG: Skipped (pattern mismatch): %s\n", entry->d_name);
                 }
             }
         }

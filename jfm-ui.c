@@ -20,7 +20,7 @@ typedef enum {
 } ScreenType;
 
 typedef struct {
-    char title[512];      // Increased from 256
+    char title[1024];      // Increased from 256
     char data[1024];      // Increased from 512
     int type;
 } MenuItem;

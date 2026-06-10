@@ -39,7 +39,7 @@ static char *_jf_api_call(const char *server_url, const char *api_key, const cha
     chunk.size = 0;
     
     char url[2048];
-    snprintf(url, sizeof(url), "%s/%s?api_key=%s", server_url, endpoint, api_key);
+    snprintf(url, sizeof(url), "%s/%s&api_key=%s", server_url, endpoint, api_key);
     
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Accept: application/json");
@@ -67,16 +67,16 @@ static char *_jf_api_call(const char *server_url, const char *api_key, const cha
 }
 
 char *jf_search(const char *server_url, const char *api_key, const char *query) {
-    char endpoint[1024];
-    snprintf(endpoint, sizeof(endpoint), "Items/Search/Instant?searchTerm=%s&limit=50", query);
-    
-    // URL encode the query (basic implementation)
+    // URL encode the query
     char *encoded_query = malloc(strlen(query) * 3 + 1);
+    if (!encoded_query) return NULL;
+    
     char *p = encoded_query;
     for (const char *q = query; *q; q++) {
         if (*q == ' ') {
             p += sprintf(p, "%%20");
-        } else if (*q >= 'A' && *q <= 'z') {
+        } else if ((*q >= 'A' && *q <= 'Z') || (*q >= 'a' && *q <= 'z') || 
+                   (*q >= '0' && *q <= '9') || *q == '-' || *q == '_' || *q == '.') {
             *p++ = *q;
         } else {
             p += sprintf(p, "%%%02X", (unsigned char)*q);
@@ -84,12 +84,15 @@ char *jf_search(const char *server_url, const char *api_key, const char *query) 
     }
     *p = 0;
     
+    // Build endpoint WITHOUT leading slash and WITHOUT initial ?
     char proper_endpoint[1024];
-    snprintf(proper_endpoint, sizeof(proper_endpoint), "Items/Search/Instant?searchTerm=%s&limit=50", encoded_query);
-    free(encoded_query);
+    snprintf(proper_endpoint, sizeof(proper_endpoint), 
+             "Items?searchTerm=%s&limit=50", encoded_query);
     
+    free(encoded_query);
     return _jf_api_call(server_url, api_key, proper_endpoint);
 }
+
 
 char *jf_get_series_episodes(const char *server_url, const char *api_key, const char *series_id) {
     char endpoint[512];

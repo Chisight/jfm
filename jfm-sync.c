@@ -54,15 +54,8 @@ void check_and_poll_series(sqlite3 *db, Server *server, Series *series) {
 }
 
 int main(int argc, char *argv[]) {
-    int daemonize = 1;
-    
-    // Parse arguments
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--foreground") == 0) {
-            daemonize = 0;
-        }
-    }
-    
+    (void)argc;
+    (void)argv;
     sqlite3 *db = db_open(DB_PATH);
     if (!db) {
         fprintf(stderr, "Failed to open database\n");
