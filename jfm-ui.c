@@ -79,9 +79,8 @@ void draw_header(void) {
 }
 
 void draw_footer(void) {
-    int max_y, max_x;
-    getmaxyx(stdscr, max_y, max_x);
-    
+    int max_y;
+    max_y = getmaxy(stdscr);
     attron(COLOR_PAIR(2));
     mvprintw(max_y - 1, 0, "%-80s", "");
     mvprintw(max_y - 1, 0, " q:Quit  j/k:Select  Enter:Open  /Search  w:Watch  ?Help");
@@ -89,8 +88,8 @@ void draw_footer(void) {
 }
 
 void draw_menu(void) {
-    int max_y, max_x;
-    getmaxyx(stdscr, max_y, max_x);
+    int max_y;
+    max_y = getmaxy(stdscr);
     
     for (int i = 1; i < max_y - 2; i++) {
         mvprintw(i, 0, "%-80s", "");
