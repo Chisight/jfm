@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include "jfm.h"
 #include <dirent.h>
 #include <sys/stat.h>
@@ -25,7 +28,9 @@ int extract_episode_info(const char *filename, char *series_name, int *season, i
     
     // Try "S##E##" pattern
     if (sscanf(base, "%511[^S]S%dE%d", name, &s, &e) >= 3) {
-        strncpy(series_name, name, 511);
+        //strncpy(series_name, name, 511);
+        strncpy(series_name, name, sizeof(series_name) - 1);
+series_name[sizeof(series_name) - 1] = '\0';
         // Clean up trailing punctuation
         int len = strlen(series_name);
         while (len > 0 && (series_name[len-1] == ' ' || series_name[len-1] == '-')) {

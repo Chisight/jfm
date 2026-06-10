@@ -10,6 +10,8 @@ typedef struct {
     size_t size;
 } MemoryStruct;
 
+static FILE *log_file = NULL;
+
 static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     MemoryStruct *mem = (MemoryStruct *)userp;
@@ -47,7 +49,9 @@ static char *_jf_api_call(const char *server_url, const char *api_key, const cha
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_STDERR, log_file ? log_file : stderr);
+
     CURLcode res = curl_easy_perform(curl);
     
     curl_slist_free_all(headers);
@@ -173,3 +177,19 @@ int jf_parse_episodes(const char *json, Episode *episodes, int *count) {
     cJSON_Delete(root);
     return 0;
 }
+
+void jf_api_init_logging(const char *log_path) {
+    log_file = fopen(log_path, "a");
+    if (log_file) {
+        fprintf(log_file, "\n=== JFM API Log Started ===\n");
+        fflush(log_file);
+    }
+}
+
+void jf_api_cleanup_logging(void) {
+    if (log_file) {
+        fclose(log_file);
+        log_file = NULL;
+    }
+}
+

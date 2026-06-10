@@ -73,5 +73,8 @@ char *jf_get_item(const char *server_url, const char *api_key, const char *item_
 int jf_parse_search_results(const char *json, Episode *episodes, int *count);
 
 void json_free(char *json);
+// Add after the existing function declarations:
+int jf_parse_episodes(const char *json, Episode *episodes, int *count);
+int db_update_series_poll_time(sqlite3 *db, const char *series_id);
 
 #endif
