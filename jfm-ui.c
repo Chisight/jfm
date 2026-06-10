@@ -275,6 +275,8 @@ int main(void) {
     int ch;
     ScreenType prev_screen = SCREEN_MAIN;
     
+    jf_api_init_logging("jfm.log");
+
     while (1) {
         screen_main();
         
@@ -328,5 +330,6 @@ int main(void) {
 cleanup:
     cleanup_ui();
     db_close(db);
+    jf_api_cleanup_logging();
     return 0;
 }

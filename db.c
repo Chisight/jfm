@@ -334,21 +334,4 @@ int db_get_series(sqlite3 *db, int server_id, Series *series, int max_count) {
     return count;
 }
 
-int db_update_series_poll_time(sqlite3 *db, const char *series_id) {
-    const char *sql = "UPDATE series SET last_polled = ? WHERE id = ?";
-    sqlite3_stmt *stmt;
-    time_t now = time(NULL);
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-        return -1;
-    }
-    
-    sqlite3_bind_int64(stmt, 1, now);
-    sqlite3_bind_text(stmt, 2, series_id, -1, SQLITE_STATIC);
-    
-    int result = sqlite3_step(stmt) == SQLITE_DONE ? 0 : -1;
-    sqlite3_finalize(stmt);
-    return result;
-}
 
