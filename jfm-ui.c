@@ -172,10 +172,8 @@ void load_local_files(const char *series_name) {
 
 void perform_search(const char *query) {
     ui_state.menu_count = 0;
-    
     Server *server = &ui_state.servers[ui_state.current_server];
     char *json = jf_search(server->url, server->api_key, query);
-    
     if (!json) {
         mvprintw(10, 5, "Search failed or no results");
         refresh();
@@ -186,17 +184,27 @@ void perform_search(const char *query) {
     Episode results[MAX_MENU_ITEMS];
     int count = 0;
     jf_parse_search_results(json, results, &count);
-    json_free(json);
+    free(json);  // Add this - you were calling json_free which does free() anyway
+    
+    if (count == 0) {
+        mvprintw(10, 5, "No results found");
+        refresh();
+        sleep(2);
+        ui_state.current_screen = SCREEN_MAIN;
+        return;
+    }
     
     for (int i = 0; i < count; i++) {
-        //snncpy(ui_state.menu_items[i].title, results[i].name, 255);
         strncpy(ui_state.menu_items[i].title, results[i].name, 255);
+        ui_state.menu_items[i].title[255] = '\0';
         strncpy(ui_state.menu_items[i].data, results[i].jellyfin_id, 511);
-        ui_state.menu_items[i].type = 0;
+        ui_state.menu_items[i].data[511] = '\0';
+        ui_state.menu_items[i].type = 0;  // type 0 for search results
         ui_state.menu_count++;
     }
     
     ui_state.selected_item = 0;
+    ui_state.current_screen = SCREEN_SEARCH;  // Add this line!
 }
 
 void play_video(const char *filepath) {

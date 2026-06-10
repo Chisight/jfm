@@ -114,33 +114,47 @@ int jf_parse_search_results(const char *json, Episode *episodes, int *count) {
     if (!json || !episodes || !count) return -1;
     
     cJSON *root = cJSON_Parse(json);
-    if (!root) return -1;
+    if (!root) {
+        fprintf(stderr, "DEBUG: Failed to parse JSON\n");
+        return -1;
+    }
     
-    cJSON *series_searches = cJSON_GetObjectItem(root, "SearchHints");
-    if (!series_searches) {
+    // The /Items endpoint returns "Items" array, not "SearchHints"
+    cJSON *items = cJSON_GetObjectItem(root, "Items");
+    if (!items) {
+        fprintf(stderr, "DEBUG: No 'Items' key in response\n");
         cJSON_Delete(root);
         return -1;
     }
     
     *count = 0;
     cJSON *item = NULL;
-    cJSON_ArrayForEach(item, series_searches) {
+    cJSON_ArrayForEach(item, items) {
         if (*count >= 50) break;
         
         cJSON *name = cJSON_GetObjectItem(item, "Name");
-        cJSON *id = cJSON_GetObjectItem(item, "ItemId");
+        cJSON *id = cJSON_GetObjectItem(item, "Id");
         cJSON *type = cJSON_GetObjectItem(item, "Type");
         
-        if (name && id && type && cJSON_IsString(type)) {
+        if (name && id) {
             strncpy(episodes[*count].name, name->valuestring, 511);
+            episodes[*count].name[511] = '\0';
             strncpy(episodes[*count].jellyfin_id, id->valuestring, 255);
+            episodes[*count].jellyfin_id[255] = '\0';
+            
+            fprintf(stderr, "DEBUG: Found result: %s (ID: %s, Type: %s)\n", 
+                    name->valuestring, id->valuestring, 
+                    type ? type->valuestring : "unknown");
+            
             (*count)++;
         }
     }
     
+    fprintf(stderr, "DEBUG: Parsed %d search results\n", *count);
     cJSON_Delete(root);
     return 0;
 }
+
 
 int jf_parse_episodes(const char *json, Episode *episodes, int *count) {
     if (!json || !episodes || !count) return -1;

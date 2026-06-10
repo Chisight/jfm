@@ -25,46 +25,50 @@ int extract_episode_info(const char *filename, char *series_name, int *season, i
     char *dot = strrchr(base, '.');
     if (dot) *dot = '\0';
     
-    // Pattern: "SeriesName_S##E## ..." or "SeriesName_S##E##..."
-    // The key is finding S followed by digits, E followed by digits
-    char *s_ptr = strstr(base, "_S");
-    if (!s_ptr) {
-        s_ptr = strstr(base, " S");
-    }
-    if (!s_ptr) {
-        return 0;  // No season marker found
-    }
-    
-    // Try to parse season and episode
+    // Find S##E## pattern - it's typically preceded by underscore or space
+    // Look backwards from the end to find the last S##E## occurrence
     int parsed_season = 0, parsed_episode = 0;
-    int matched = sscanf(s_ptr, "%*[_]S%dE%d", &parsed_season, &parsed_episode);
-    if (matched != 2) {
-        // Try with space instead of underscore
-        matched = sscanf(s_ptr, "%*[ ]S%dE%d", &parsed_season, &parsed_episode);
+    char *s_ptr = NULL;
+    
+    // Try to find "S##E##" pattern
+    for (char *p = base + strlen(base) - 1; p > base; p--) {
+        if (*p >= '0' && *p <= '9') continue;  // digits are fine
+        if ((*p == '_' || *p == ' ' || *p == '.') && *(p+1) == 'S') {
+            // Found potential marker
+            if (sscanf(p+1, "S%dE%d", &parsed_season, &parsed_episode) == 2) {
+                s_ptr = p+1;
+                break;
+            }
+        }
     }
     
-    if (matched != 2 || parsed_season < 0 || parsed_episode < 0) {
-        printf("DEBUG: Could not parse S##E## from: %s\n", s_ptr);
+    if (!s_ptr || parsed_season <= 0 || parsed_episode <= 0) {
+        printf("DEBUG: No S##E## pattern found in: %s\n", base);
         return 0;
     }
     
-    // Extract series name (everything before S marker)
+    // Extract series name (everything before the S marker)
     int name_len = s_ptr - base;
     if (name_len > 255) name_len = 255;
     strncpy(series_name, base, name_len);
     series_name[name_len] = '\0';
     
-    // Clean up underscores/whitespace in series name
+    // Clean up trailing underscores/spaces in series name
+    while (name_len > 0 && (series_name[name_len-1] == '_' || 
+                             series_name[name_len-1] == ' ' || 
+                             series_name[name_len-1] == '.')) {
+        series_name[--name_len] = '\0';
+    }
+    
+    // Convert underscores to spaces in series name
     for (char *p = series_name; *p; p++) {
         if (*p == '_') *p = ' ';
     }
     
     *season = parsed_season;
     *episode = parsed_episode;
-    
     return 1;
 }
-
 
 int get_video_duration(const char *filepath, int *duration_ms) {
     if (!filepath || !duration_ms) return -1;
@@ -72,7 +76,7 @@ int get_video_duration(const char *filepath, int *duration_ms) {
     // Use ffprobe to get duration
     char cmd[2048];
     snprintf(cmd, sizeof(cmd),
-        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:noinput=1 '%s' 2>/dev/null",
+        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '%s' 2>/dev/null",
         filepath);
     
     FILE *fp = popen(cmd, "r");
@@ -93,9 +97,6 @@ int get_video_duration(const char *filepath, int *duration_ms) {
     *duration_ms = (int)(duration_sec * 1000);
     return 0;
 }
-
-
-
 
 int has_valid_extension(const char *filename, const char *extensions) {
     const char *dot = strrchr(filename, '.');
