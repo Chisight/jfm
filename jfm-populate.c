@@ -15,88 +15,87 @@
 #define VIDEO_EXTENSIONS "mp4|mkv|avi|mov|webm|flv|m4v|mpg|mpeg"
 
 int extract_episode_info(const char *filename, char *series_name, int *season, int *episode) {
-    // Pattern: SeriesName - S01E05 - Episode Title.mkv
-    // Or: SeriesName_S01E05.mkv
-    char *copy = strdup(filename);
-    char *base = basename(copy);
+    if (!filename || !series_name || !season || !episode) return 0;
+    
+    // Remove extension
+    char base[512];
+    strncpy(base, filename, sizeof(base) - 1);
+    base[sizeof(base) - 1] = '\0';
+    
     char *dot = strrchr(base, '.');
-    if (dot) *dot = 0;
+    if (dot) *dot = '\0';
     
-    int s = 0, e = 0;
-    char name[512] = {0};
-    
-    // Try "S##E##" pattern
-    if (sscanf(base, "%511[^S]S%dE%d", name, &s, &e) >= 3) {
-        // FIX: Use the correct buffer size (511), not sizeof()
-        strncpy(series_name, name, 511);
-        series_name[511] = '\0';
-        
-        // Clean up trailing punctuation
-        int len = strlen(series_name);
-        while (len > 0 && (series_name[len-1] == ' ' || series_name[len-1] == '-' || series_name[len-1] == '_')) {
-            series_name[--len] = 0;
-        }
-        
-        // Replace underscores with spaces
-        for (char *p = series_name; *p; p++) {
-            if (*p == '_') *p = ' ';
-        }
-        
-        *season = s;
-        *episode = e;
-        free(copy);
-        return 1;
+    // Pattern: "SeriesName_S##E## ..." or "SeriesName_S##E##..."
+    // The key is finding S followed by digits, E followed by digits
+    char *s_ptr = strstr(base, "_S");
+    if (!s_ptr) {
+        s_ptr = strstr(base, " S");
+    }
+    if (!s_ptr) {
+        return 0;  // No season marker found
     }
     
-    free(copy);
+    // Try to parse season and episode
+    int parsed_season = 0, parsed_episode = 0;
+    int matched = sscanf(s_ptr, "%*[_]S%dE%d", &parsed_season, &parsed_episode);
+    if (matched != 2) {
+        // Try with space instead of underscore
+        matched = sscanf(s_ptr, "%*[ ]S%dE%d", &parsed_season, &parsed_episode);
+    }
+    
+    if (matched != 2 || parsed_season < 0 || parsed_episode < 0) {
+        printf("DEBUG: Could not parse S##E## from: %s\n", s_ptr);
+        return 0;
+    }
+    
+    // Extract series name (everything before S marker)
+    int name_len = s_ptr - base;
+    if (name_len > 255) name_len = 255;
+    strncpy(series_name, base, name_len);
+    series_name[name_len] = '\0';
+    
+    // Clean up underscores/whitespace in series name
+    for (char *p = series_name; *p; p++) {
+        if (*p == '_') *p = ' ';
+    }
+    
+    *season = parsed_season;
+    *episode = parsed_episode;
+    
+    return 1;
+}
+
+
+int get_video_duration(const char *filepath, int *duration_ms) {
+    if (!filepath || !duration_ms) return -1;
+    
+    // Use ffprobe to get duration
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd),
+        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:noinput=1 '%s' 2>/dev/null",
+        filepath);
+    
+    FILE *fp = popen(cmd, "r");
+    if (!fp) {
+        fprintf(stderr, "ERROR: Failed to run ffprobe for %s\n", filepath);
+        return -1;
+    }
+    
+    double duration_sec = 0.0;
+    int scanned = fscanf(fp, "%lf", &duration_sec);
+    pclose(fp);
+    
+    if (scanned != 1) {
+        fprintf(stderr, "ERROR: Could not parse duration for %s\n", filepath);
+        return -1;
+    }
+    
+    *duration_ms = (int)(duration_sec * 1000);
     return 0;
 }
 
-int get_video_duration(const char *filepath, int *duration_seconds) {
-    // Use ffprobe to get duration - properly escape the filepath
-    char *escaped_path = malloc(strlen(filepath) * 2 + 1);
-    if (!escaped_path) return -1;
-    
-    char *src = (char *)filepath;
-    char *dst = escaped_path;
-    
-    // Escape single quotes and backslashes for shell
-    while (*src) {
-        if (*src == '\'') {
-            *dst++ = '\'';
-            *dst++ = '\\';
-            *dst++ = '\'';
-            *dst++ = '\'';
-            src++;
-        } else if (*src == '\\') {
-            *dst++ = '\\';
-            *dst++ = '\\';
-            src++;
-        } else {
-            *dst++ = *src++;
-        }
-    }
-    *dst = '\0';
-    
-    char cmd[4096];
-    snprintf(cmd, sizeof(cmd),
-        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:noprint_filename=1 '%s' 2>/dev/null",
-        escaped_path);
-    
-    FILE *fp = popen(cmd, "r");
-    free(escaped_path);
-    
-    if (!fp) return -1;
-    
-    double duration = 0;
-    int result = fscanf(fp, "%lf", &duration);
-    pclose(fp);
-    
-    if (result != 1) return -1;
-    
-    *duration_seconds = (int)duration;
-    return 0;
-}
+
+
 
 int has_valid_extension(const char *filename, const char *extensions) {
     const char *dot = strrchr(filename, '.');

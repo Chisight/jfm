@@ -157,9 +157,10 @@ void load_local_files(const char *series_name) {
     for (int i = 0; i < count; i++) {
         char *filename = strrchr(files[i].path, '/');
         filename = filename ? filename + 1 : files[i].path;
-        
-        snprintf(ui_state.menu_items[i].title, 256, "S%02dE%02d - %s", 
-                 files[i].season, files[i].episode, filename);
+        snprintf(ui_state.menu_items[i].title, sizeof(ui_state.menu_items[i].title), 
+                 "S%02dE%02d - %s",
+                 files[i].season, files[i].episode, filename
+                );
         strncpy(ui_state.menu_items[i].data, files[i].path, 511);
         ui_state.menu_items[i].type = 2;
         ui_state.menu_count++;
