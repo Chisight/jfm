@@ -10,7 +10,7 @@
 #define MAX_API_KEY 256
 #define MAX_QUERY 256
 #define JELLYFIN_AGENT_NAME "jellyfin-media-manager"
-#define DB_PATH "jfm.db"
+#define DB_PATH "/home/xanth/.local/share/jfm/jfm.db"
 #define VIDEO_ROOT "/data/video"
 
 typedef struct {

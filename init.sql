@@ -1,6 +1,8 @@
 -- Initialize with proper configuration
 PRAGMA foreign_keys = ON;
 
+-- jfm.db schema
+
 -- Server configurations
 CREATE TABLE IF NOT EXISTS servers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,3 +105,4 @@ CREATE INDEX IF NOT EXISTS idx_episodes_server ON episodes(server_id);
 CREATE INDEX IF NOT EXISTS idx_watch_history_file ON watch_history(file_id);
 CREATE INDEX IF NOT EXISTS idx_watch_history_user ON watch_history(user_name);
 CREATE INDEX IF NOT EXISTS idx_local_files_series ON local_files(series_name);
+
