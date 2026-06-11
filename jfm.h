@@ -47,7 +47,7 @@ typedef struct {
     char series_name[512];
     int season;
     int episode;
-    int duration_seconds;
+    int duration_ms;
 } LocalFile;
 
 // Function declarations

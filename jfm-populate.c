@@ -14,10 +14,9 @@
 #define AUDIO_EXTENSIONS "mp3|m4a|aac|flac|ogg|wav"
 #define VIDEO_EXTENSIONS "mp4|mkv|avi|mov|webm|flv|m4v|mpg|mpeg"
 
-int extract_episode_info(const char *filename, char *series_name, int *season, int *episode) {
+int extract_episode_info(const char *filename, const char *filepath, char *series_name, int *season, int *episode) {
     if (!filename || !series_name || !season || !episode) return 0;
     
-    // Remove extension
     char base[512];
     strncpy(base, filename, sizeof(base) - 1);
     base[sizeof(base) - 1] = '\0';
@@ -25,50 +24,65 @@ int extract_episode_info(const char *filename, char *series_name, int *season, i
     char *dot = strrchr(base, '.');
     if (dot) *dot = '\0';
     
-    // Find S##E## pattern - it's typically preceded by underscore or space
-    // Look backwards from the end to find the last S##E## occurrence
-    int parsed_season = 0, parsed_episode = 0;
+    int parsed_season = -1, parsed_episode = -1;
     char *s_ptr = NULL;
     
-    // Try to find "S##E##" pattern
+    // Look for S##E## or s##e## pattern
     for (char *p = base + strlen(base) - 1; p > base; p--) {
-        if (*p >= '0' && *p <= '9') continue;  // digits are fine
-        if ((*p == '_' || *p == ' ' || *p == '.') && *(p+1) == 'S') {
-            // Found potential marker
-            if (sscanf(p+1, "S%dE%d", &parsed_season, &parsed_episode) == 2) {
+        if (*p >= '0' && *p <= '9') continue;
+        if ((*p == '_' || *p == ' ' || *p == '.') && (*(p+1) == 'S' || *(p+1) == 's')) {
+            if (sscanf(p+1, "S%dE%d", &parsed_season, &parsed_episode) == 2 ||
+                sscanf(p+1, "s%de%d", &parsed_season, &parsed_episode) == 2) {
                 s_ptr = p+1;
                 break;
             }
         }
     }
     
-    if (!s_ptr || parsed_season <= 0 || parsed_episode <= 0) {
-        printf("DEBUG: No S##E## pattern found in: %s\n", base);
-        return 0;
+    if (!s_ptr || parsed_season == -1 || parsed_episode == -1) {
+        // Movie - extract from parent directory
+        char path_copy[MAX_PATH];
+        strncpy(path_copy, filepath, sizeof(path_copy) - 1);
+        
+        char *last_slash = strrchr(path_copy, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+            char *parent_dir = strrchr(path_copy, '/');
+            if (parent_dir) {
+                parent_dir++;
+                strncpy(series_name, parent_dir, 255);
+                for (char *p = series_name; *p; p++) {
+                    if (*p == '_') *p = ' ';
+                }
+                *season = 0;
+                *episode = 0;
+                return 1;
+            }
+        }
+    } else {
+        // Series with episodes
+        int name_len = s_ptr - base;
+        if (name_len > 255) name_len = 255;
+        strncpy(series_name, base, name_len);
+        series_name[name_len] = '\0';
+        
+        while (name_len > 0 && (series_name[name_len-1] == '_' ||
+                series_name[name_len-1] == ' ' ||
+                series_name[name_len-1] == '.')) {
+            series_name[--name_len] = '\0';
+        }
+        
+        for (char *p = series_name; *p; p++) {
+            if (*p == '_') *p = ' ';
+        }
+        
+        *season = parsed_season;
+        *episode = parsed_episode;
+        return 1;
     }
-    
-    // Extract series name (everything before the S marker)
-    int name_len = s_ptr - base;
-    if (name_len > 255) name_len = 255;
-    strncpy(series_name, base, name_len);
-    series_name[name_len] = '\0';
-    
-    // Clean up trailing underscores/spaces in series name
-    while (name_len > 0 && (series_name[name_len-1] == '_' || 
-                             series_name[name_len-1] == ' ' || 
-                             series_name[name_len-1] == '.')) {
-        series_name[--name_len] = '\0';
-    }
-    
-    // Convert underscores to spaces in series name
-    for (char *p = series_name; *p; p++) {
-        if (*p == '_') *p = ' ';
-    }
-    
-    *season = parsed_season;
-    *episode = parsed_episode;
-    return 1;
+    return 0;
 }
+
 
 int get_video_duration(const char *filepath, int *duration_ms) {
     if (!filepath || !duration_ms) return -1;
@@ -156,7 +170,8 @@ void scan_directory(sqlite3 *db, const char *path, int depth) {
                 char series_name[512] = {0};
                 int season = 0, episode = 0;
                 
-                if (extract_episode_info(entry->d_name, series_name, &season, &episode)) {
+                //if (extract_episode_info(entry->d_name, series_name, &season, &episode)) {
+                if (extract_episode_info(entry->d_name, filepath, series_name, &season, &episode)) {
                     int duration = 0;
                     if (get_video_duration(filepath, &duration) == 0) {
                         printf("Found: %s - S%02dE%02d (%s)\n",

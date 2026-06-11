@@ -159,7 +159,7 @@ int db_get_watch_state(sqlite3 *db, const char *file_id, const char *user, doubl
 int db_add_local_file(sqlite3 *db, const char *path, const char *series_name, 
                       int season, int episode, int duration) {
     const char *sql = "INSERT OR IGNORE INTO local_files "
-                      "(id, path, series_name, season_number, episode_number, duration_seconds) "
+                      "(id, path, series_name, season_number, episode_number, duration_ms) "
                       "VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, ?)";
     sqlite3_stmt *stmt;
     
@@ -284,7 +284,7 @@ int db_get_episodes_for_series(sqlite3 *db, const char *series_id, Episode *epis
 }
 
 int db_get_local_files(sqlite3 *db, const char *series_name, LocalFile *files, int max_count) {
-    const char *sql = "SELECT path, series_name, season_number, episode_number, duration_seconds "
+    const char *sql = "SELECT path, series_name, season_number, episode_number, duration_ms "
                       "FROM local_files WHERE series_name = ? ORDER BY season_number, episode_number";
     sqlite3_stmt *stmt;
     int count = 0;
@@ -301,7 +301,7 @@ int db_get_local_files(sqlite3 *db, const char *series_name, LocalFile *files, i
         strncpy(files[count].series_name, (char *)sqlite3_column_text(stmt, 1), 511);
         files[count].season = sqlite3_column_int(stmt, 2);
         files[count].episode = sqlite3_column_int(stmt, 3);
-        files[count].duration_seconds = sqlite3_column_int(stmt, 4);
+        files[count].duration_ms = sqlite3_column_int(stmt, 4);
         count++;
     }
     

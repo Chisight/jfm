@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS local_files (
     series_name TEXT,
     season_number INTEGER,
     episode_number INTEGER,
-    duration_seconds INTEGER,
+    duration_ms INTEGER,
     scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     indexed INTEGER DEFAULT 0
 );
