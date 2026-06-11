@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define AUDIO_EXTENSIONS "mp3|m4a|aac|flac|ogg|wav"
 #define VIDEO_EXTENSIONS "mp4|mkv|avi|mov|webm|flv|m4v|mpg|mpeg"
@@ -83,25 +85,61 @@ int extract_episode_info(const char *filename, const char *filepath, char *serie
     return 0;
 }
 
-
 int get_video_duration(const char *filepath, int *duration_ms) {
     if (!filepath || !duration_ms) return -1;
     
-    // Use ffprobe to get duration
-    char cmd[2048];
-    snprintf(cmd, sizeof(cmd),
-        "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '%s' 2>/dev/null",
-        filepath);
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        return -1;
+    }
     
-    FILE *fp = popen(cmd, "r");
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }
+    
+    if (pid == 0) {
+        // Child process
+        close(pipefd[0]);  // Close read end
+        dup2(pipefd[1], STDOUT_FILENO);  // Redirect stdout to pipe
+        close(pipefd[1]);
+        
+        // Execute ffprobe directly—no shell interpretation
+        execvp("ffprobe", (char *const[]) {
+            "ffprobe",
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            (char *)filepath,
+            NULL
+        });
+        
+        // If execvp returns, something went wrong
+        perror("execvp");
+        exit(1);
+    }
+    
+    // Parent process
+    close(pipefd[1]);  // Close write end
+    
+    FILE *fp = fdopen(pipefd[0], "r");
     if (!fp) {
-        fprintf(stderr, "ERROR: Failed to run ffprobe for %s\n", filepath);
+        perror("fdopen");
+        close(pipefd[0]);
+        waitpid(pid, NULL, 0);
         return -1;
     }
     
     double duration_sec = 0.0;
     int scanned = fscanf(fp, "%lf", &duration_sec);
-    pclose(fp);
+    fclose(fp);
+    
+    int status;
+    waitpid(pid, &status, 0);
     
     if (scanned != 1) {
         fprintf(stderr, "ERROR: Could not parse duration for %s\n", filepath);
@@ -196,7 +234,7 @@ void scan_directory(sqlite3 *db, const char *path, int depth) {
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
-    sqlite3 *db = db_open(DB_PATH);
+    sqlite3 *db = db_open();
     if (!db) {
         fprintf(stderr, "Failed to open database\n");
         return 1;

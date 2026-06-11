@@ -3,10 +3,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <pwd.h>
+#include <unistd.h>
+#include <string.h>
 
-sqlite3 *db_open(const char *path) {
+char *get_db_path(char *buffer, size_t bufsize) {
+    const char *home = getenv("HOME");
+    
+    if (!home) {
+        // Fallback: use getpwuid
+        struct passwd *pw = getpwuid(getuid());
+        if (!pw) {
+            fprintf(stderr, "ERROR: Could not determine home directory\n");
+            return NULL;
+        }
+        home = pw->pw_dir;
+    }
+    
+    snprintf(buffer, bufsize, "%s%s", home, DB_PATH_SUFFIX);
+    return buffer;
+}
+
+sqlite3 *db_open() {
+    char db_path[MAX_PATH];
+    if (!get_db_path(db_path, sizeof(db_path))) {
+        return NULL;
+    }
     sqlite3 *db;
-    int rc = sqlite3_open(path, &db);
+    int rc = sqlite3_open(db_path, &db);
     if (rc) {
         fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);

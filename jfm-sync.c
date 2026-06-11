@@ -56,7 +56,7 @@ void check_and_poll_series(sqlite3 *db, Server *server, Series *series) {
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
-    sqlite3 *db = db_open(DB_PATH);
+    sqlite3 *db = db_open();
     if (!db) {
         fprintf(stderr, "Failed to open database\n");
         return 1;

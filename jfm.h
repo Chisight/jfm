@@ -10,7 +10,7 @@
 #define MAX_API_KEY 256
 #define MAX_QUERY 256
 #define JELLYFIN_AGENT_NAME "jellyfin-media-manager"
-#define DB_PATH "/home/xanth/.local/share/jfm/jfm.db"
+#define DB_PATH_SUFFIX "/.local/share/jfm/jfm.db"
 #define VIDEO_ROOT "/data/video"
 
 typedef struct {
@@ -51,7 +51,7 @@ typedef struct {
 } LocalFile;
 
 // Function declarations
-sqlite3 *db_open(const char *path);
+sqlite3 *db_open(void);
 void db_close(sqlite3 *db);
 int db_add_server(sqlite3 *db, const char *name, const char *url, const char *api_key);
 int db_get_servers(sqlite3 *db, Server *servers, int max_count);

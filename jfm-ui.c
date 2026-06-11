@@ -274,7 +274,7 @@ void screen_search(void) {
 }
 
 int main(void) {
-    sqlite3 *db = db_open(DB_PATH);
+    sqlite3 *db = db_open();
     if (!db) {
         fprintf(stderr, "Failed to open database\n");
         return 1;
